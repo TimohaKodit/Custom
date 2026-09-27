@@ -3,6 +3,8 @@ node_modules/
 dist/
 .cargo-target/
 src-tauri/target/
+# схемы прав, их генерирует tauri-build при каждой сборке
+src-tauri/gen/schemas/
 
 # локальные настройки и секреты
 .env
