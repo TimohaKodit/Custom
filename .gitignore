@@ -6,7 +6,9 @@ src-tauri/target/
 # схемы прав, их генерирует tauri-build при каждой сборке
 src-tauri/gen/schemas/
 
-# локальные настройки и секреты
+# локальные заметки и настройки, в репозиторий не идут
+CLAUDE.md
+.claude/
 .env
 .env.*
 *.local
