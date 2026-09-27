@@ -95,6 +95,37 @@ body {
   flex-grow: 1;
 }
 
+/* Карточки прокручиваются, шапка и подвал остаются на месте */
+.cards {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* место под полосу прокрутки, чтобы карточки не прыгали при её появлении */
+  padding-right: 4px;
+  margin-right: -4px;
+}
+
+.cards::-webkit-scrollbar {
+  width: 4px;
+}
+
+.cards::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 2px;
+}
+
+.cards::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.cards::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .muted {
   color: var(--muted);
   font-size: 12px;

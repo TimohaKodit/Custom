@@ -1,9 +1,16 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { ClaudeCard } from "./cards/ClaudeCard";
+import { DiskCard } from "./cards/DiskCard";
 import { PcCard } from "./cards/PcCard";
+import { useClaudeStats } from "./hooks/useClaudeStats";
+import { useDiskStats } from "./hooks/useDiskStats";
 import { useSystemStats } from "./hooks/useSystemStats";
 
 export default function App() {
-  const { stats, error, history } = useSystemStats();
+  const system = useSystemStats();
+  const claude = useClaudeStats();
+  const disk = useDiskStats();
+
   const hide = () => getCurrentWindow().hide();
 
   return (
@@ -20,13 +27,11 @@ export default function App() {
         </button>
       </header>
 
-      <PcCard stats={stats} error={error} history={history} />
-
-      <section className="card">
-        <span className="muted">Карточка «Claude Code» — следующий шаг</span>
-      </section>
-
-      <span className="grow" />
+      <div className="cards">
+        <PcCard stats={system.stats} error={system.error} history={system.history} />
+        <ClaudeCard stats={claude.stats} error={claude.error} />
+        <DiskCard report={disk.report} error={disk.error} refresh={disk.refresh} />
+      </div>
 
       <footer className="foot">
         <span>всё считается локально</span>
