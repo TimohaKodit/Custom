@@ -1,18 +1,20 @@
-/* Карточка «Место на диске». Цвет метки зависит от остатка, внутренняя ширина ~344px. */
+/* Карточка «Место на диске». Цвет метки зависит от остатка, внутренняя ширина ~344px.
+   Все цвета — из семантических переменных styles.css, поэтому карточка
+   переключается вместе с темой. */
 
 .card-mark.disk-mark-ok {
-  background: #241f4d;
-  color: #9d8ffa;
+  background: var(--mark-violet-bg);
+  color: var(--mark-violet-fg);
 }
 
 .card-mark.disk-mark-warn {
-  background: #3a3018;
-  color: #eec765;
+  background: var(--mark-amber-bg);
+  color: var(--mark-amber-fg);
 }
 
 .card-mark.disk-mark-critical {
-  background: #3d1f1c;
-  color: #f0897a;
+  background: var(--mark-red-bg);
+  color: var(--mark-red-fg);
 }
 
 .dot.disk-dot-ok {
@@ -70,7 +72,7 @@
 }
 
 .disk-row:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--row-hover);
 }
 
 .disk-check {
@@ -134,11 +136,11 @@
 .disk-btn-main {
   width: 100%;
   background: var(--violet-soft);
-  border-color: rgba(125, 107, 247, 0.35);
+  border-color: var(--violet-border);
 }
 
 .disk-btn-main:hover:enabled {
-  background: rgba(125, 107, 247, 0.28);
+  background: var(--violet-strong);
 }
 
 /* --- подтверждение перед удалением --- */
@@ -147,9 +149,9 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border: 1px solid rgba(229, 112, 95, 0.35);
+  border: 1px solid var(--red-border);
   border-radius: 11px;
-  background: rgba(229, 112, 95, 0.1);
+  background: var(--red-soft);
   padding: 10px;
 }
 
@@ -169,20 +171,20 @@
 }
 
 .disk-btn-ghost {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover);
   border-color: var(--card-border);
 }
 
 .disk-btn-ghost:hover:enabled {
-  background: rgba(255, 255, 255, 0.11);
+  background: var(--hover-strong);
 }
 
 .disk-btn-danger {
-  background: rgba(229, 112, 95, 0.22);
-  border-color: rgba(229, 112, 95, 0.5);
-  color: #f6b3a9;
+  background: var(--red-soft-strong);
+  border-color: var(--red-border-strong);
+  color: var(--danger-text);
 }
 
 .disk-btn-danger:hover:enabled {
-  background: rgba(229, 112, 95, 0.32);
+  background: var(--red-strong);
 }

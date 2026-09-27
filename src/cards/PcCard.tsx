@@ -87,7 +87,7 @@ export function PcCard({ stats, error, history }: Props) {
       <Sparkline
         values={history}
         color="var(--violet)"
-        fill="rgba(125, 107, 247, 0.16)"
+        fill="var(--sparkline-fill)"
       />
 
       <div className="chips">

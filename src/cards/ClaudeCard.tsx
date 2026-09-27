@@ -1,29 +1,44 @@
+import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { Bar } from "../components/Bar";
 import { percent } from "../lib/format";
 import {
+  budgetNote,
   clock,
   shortDate,
   todayKey,
   tokens,
   weekday,
   type ClaudeStats,
+  type Settings,
 } from "../lib/claudeTypes";
 import "./claude-card.css";
 
-/**
- * Порог 5-часового окна в токенах.
- * Из логов он не читается, поэтому значение временное: позже его задаст
- * пользователь в настройках, а при отказе API по лимиту оно откалибруется
- * по `lastLimitHit` (запись `quotaLimits` с `rateLimitType: "five_hour"`).
- */
-export const WINDOW_BUDGET_TOKENS = 8_000_000;
+/** С этой доли окна карточка предупреждает «скоро лимит». */
+const WARN_SHARE = 0.8;
 
 interface Props {
   stats: ClaudeStats | null;
   error: string | null;
+  /**
+   * Перезапрос статистики после смены порога. Проп необязательный только чтобы
+   * карточку можно было показать без хука; в приложении его передавать нужно,
+   * иначе новый порог доедет до полосы лишь со следующим опросом.
+   */
+  refresh?: () => void | Promise<void>;
 }
 
-export function ClaudeCard({ stats, error }: Props) {
+/** Порог в поле ввода показываем в миллионах: девять цифр руками не набрать. */
+function toMillions(value: number): string {
+  return (value / 1_000_000).toFixed(1);
+}
+
+export function ClaudeCard({ stats, error, refresh }: Props) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   if (error) {
     return (
       <section className="card">
@@ -40,10 +55,47 @@ export function ClaudeCard({ stats, error }: Props) {
     );
   }
 
-  const windowPct = percent(stats.windowTokens, WINDOW_BUDGET_TOKENS);
+  const share = stats.windowBudget > 0 ? stats.windowTokens / stats.windowBudget : 0;
+  // percent() обрезает по 100, поэтому полоса не уезжает за край карточки
+  const windowPct = percent(stats.windowTokens, stats.windowBudget);
+  const over = share >= 1;
+  const near = !over && share >= WARN_SHARE;
+  const windowColor = over ? "var(--red)" : near ? "var(--amber)" : "var(--orange)";
+
   const weekPeak = Math.max(1, ...stats.byDay.map((d) => d.tokens));
   const projectPeak = Math.max(1, ...stats.byProject.map((p) => p.tokens));
   const today = todayKey();
+
+  const openEditor = () => {
+    setDraft(toMillions(stats.windowBudget));
+    setSaveError(null);
+    setEditing(true);
+  };
+
+  /** `null` — вернуться к автокалибровке. */
+  const save = async (windowBudget: number | null) => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const settings: Settings = { windowBudget };
+      await invoke("save_settings", { settings });
+      await refresh?.();
+      setEditing(false);
+    } catch (err) {
+      setSaveError(String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submit = () => {
+    const millions = Number(draft.replace(",", "."));
+    if (!Number.isFinite(millions) || millions <= 0) {
+      setSaveError("Порог должен быть числом больше нуля");
+      return;
+    }
+    void save(Math.round(millions * 1_000_000));
+  };
 
   return (
     <section className="card">
@@ -62,13 +114,79 @@ export function ClaudeCard({ stats, error }: Props) {
         )}
       </div>
 
-      <Bar
-        label="Окно 5 ч"
-        value={tokens(stats.windowTokens)}
-        total={tokens(WINDOW_BUDGET_TOKENS)}
-        percent={windowPct}
-        color="var(--orange)"
-      />
+      <div className="claude-window">
+        <Bar
+          label="Окно 5 ч"
+          value={tokens(stats.windowTokens)}
+          total={tokens(stats.windowBudget)}
+          percent={windowPct}
+          color={windowColor}
+        />
+
+        <div className="claude-budget">
+          <span className="claude-budget-note">
+            {budgetNote(stats.budgetSource, stats.budgetSamples)}
+          </span>
+          {(over || near) && (
+            <span className={over ? "claude-budget-alarm" : "claude-budget-warn"}>
+              {over ? "лимит исчерпан" : "скоро лимит"}
+            </span>
+          )}
+          <span className="grow" />
+          <button
+            type="button"
+            className="icon-btn claude-budget-edit"
+            aria-label="Задать порог окна вручную"
+            aria-expanded={editing}
+            onClick={() => (editing ? setEditing(false) : openEditor())}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3z" />
+              <path d="M14.5 5.5l4 4" />
+            </svg>
+          </button>
+        </div>
+
+        {editing && (
+          <div className="claude-editor">
+            <label className="claude-editor-label" htmlFor="claude-budget-input">
+              Порог окна, млн токенов
+            </label>
+            <input
+              id="claude-budget-input"
+              className="claude-editor-input mono"
+              type="number"
+              min="0.1"
+              step="0.5"
+              value={draft}
+              disabled={saving}
+              onChange={(e) => setDraft(e.target.value)}
+            />
+            <div className="claude-editor-actions">
+              <button
+                type="button"
+                className="claude-btn claude-btn-main"
+                disabled={saving}
+                onClick={submit}
+              >
+                {saving ? "Сохраняю…" : "Сохранить"}
+              </button>
+              <button
+                type="button"
+                className="claude-btn claude-btn-ghost"
+                disabled={saving}
+                onClick={() => void save(null)}
+              >
+                Сбросить
+              </button>
+            </div>
+            <span className="claude-editor-hint">
+              «Сбросить» вернёт автокалибровку по отказам в логах.
+            </span>
+            {saveError && <span className="claude-editor-error">{saveError}</span>}
+          </div>
+        )}
+      </div>
 
       <div className="claude-today">
         <span className="claude-today-value mono">{tokens(stats.todayTokens)}</span>

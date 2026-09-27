@@ -16,6 +16,21 @@ const TOP_PROJECTS: usize = 5;
 /// Файл считается «живым», если менялся за это время.
 const ACTIVE_SECS: u64 = 5 * 60;
 
+/// Порог окна, когда о тарифе не известно ничего: ни отказов в логах, ни
+/// ручной настройки. Взят по порядку величины, а не наугад: в расход входят
+/// `cache_read_input_tokens`, а их в диалоге Claude Code в десятки раз больше,
+/// чем собственно новых токенов, поэтому реальные окна measured-порога
+/// получаются на десятках миллионов. 30 млн — примерно половина того, что
+/// измеряется на этой машине: заниженный порог заставит полосу предупредить
+/// раньше времени, а это безопаснее ложного спокойствия. Карточка всё равно
+/// пишет «порог не измерен», так что число видно как ориентир, а не как факт.
+const DEFAULT_BUDGET: u64 = 30_000_000;
+
+/// Значения поля `budget_source`.
+const SOURCE_MEASURED: &str = "measured";
+const SOURCE_MANUAL: &str = "manual";
+const SOURCE_DEFAULT: &str = "default";
+
 /// Поля usage, которые складываются в расход одной записи.
 const USAGE_FIELDS: [&str; 4] = [
     "input_tokens",
@@ -61,6 +76,12 @@ pub struct ClaudeStats {
     pub last_limit_hit: Option<String>,
     /// Проекты, чей лог менялся за последние 5 минут.
     pub active_projects: Vec<String>,
+    /// Действующий порог 5-часового окна в токенах.
+    pub window_budget: u64,
+    /// Откуда взялся порог: "measured", "manual" или "default".
+    pub budget_source: String,
+    /// Сколько отказов участвовало в измерении порога (0 — измерения нет).
+    pub budget_samples: u32,
 }
 
 /// Один файл лога вместе с проектом, к которому он относится.
@@ -84,6 +105,12 @@ struct Agg {
     window_earliest: Option<DateTime<Utc>>,
     /// Время последнего отказа 429 и его resetsAt (unix-секунды), если он был.
     last_limit: Option<(DateTime<Utc>, Option<i64>)>,
+    /// Время каждой учтённой записи и её расход — материал для калибровки:
+    /// сколько токенов ушло за любые пять часов, считается уже после прохода.
+    spend: Vec<(DateTime<Utc>, u64)>,
+    /// Отказы по 5-часовому лимиту за всю историю, ключ — та же пара
+    /// (message.id, requestId): строка отказа в логе тоже дублируется.
+    refusals: HashMap<(String, String), DateTime<Utc>>,
 }
 
 impl Agg {
@@ -99,6 +126,8 @@ impl Agg {
             by_model: HashMap::new(),
             window_earliest: None,
             last_limit: None,
+            spend: Vec::new(),
+            refusals: HashMap::new(),
         }
     }
 }
@@ -219,7 +248,10 @@ fn to_iso(moment: DateTime<Utc>) -> String {
     moment.to_rfc3339_opts(SecondsFormat::Secs, true)
 }
 
-/// Отказ 429 по 5-часовому лимиту: запоминаем самый свежий.
+/// Запись о 5-часовом лимите. Запоминаем самую свежую (её `resetsAt` точнее
+/// расчётного времени сброса) и отдельно — все отказы, по которым калибруется
+/// порог. Такие записи приходят с `model: "<synthetic>"` и нулевым usage,
+/// поэтому в расход они не попадают.
 fn note_limit_hit(agg: &mut Agg, record: &Value) {
     let quota = match record.get("quotaLimits") {
         Some(quota) => quota,
@@ -242,6 +274,30 @@ fn note_limit_hit(agg: &mut Agg, record: &Value) {
     if fresher {
         agg.last_limit = Some((moment, quota.get("resetsAt").and_then(Value::as_i64)));
     }
+
+    // калибруем только по настоящим отказам: запись со status != "rejected"
+    // говорит, что запрос прошёл, и моментом исчерпания лимита не является
+    if quota.get("status").and_then(Value::as_str) != Some("rejected") {
+        return;
+    }
+    let id = record
+        .get("message")
+        .and_then(|message| message.get("id"))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let request_id = record
+        .get("requestId")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    // без идентификаторов дедуплицировать нечем — разделяем такие отказы по времени
+    let key = if id.is_empty() && request_id.is_empty() {
+        (moment.to_rfc3339(), String::new())
+    } else {
+        (id, request_id)
+    };
+    agg.refusals.entry(key).or_insert(moment);
 }
 
 /// Одна строка лога. Возвращает расход, если запись учтена.
@@ -296,6 +352,8 @@ fn take_record(agg: &mut Agg, bounds: &Bounds, project: &str, line: &str) {
         // без времени запись попадает только в общий итог
         None => return,
     };
+
+    agg.spend.push((moment, tokens));
 
     if moment >= bounds.window_start {
         agg.window += tokens;
@@ -389,8 +447,65 @@ fn window_reset(agg: &Agg, now: DateTime<Utc>) -> Option<String> {
         .map(to_iso)
 }
 
+/// Измеряет порог окна по отказам.
+///
+/// Момент отказа — это момент, когда лимит был исчерпан ровно, значит расход за
+/// пять часов перед отказом и есть размер окна. Из наблюдений берём **максимум**,
+/// а не среднее: часть запросов могла не попасть в лог (обрыв, битая строка,
+/// удалённая сессия), от чего наблюдение только уменьшается, поэтому большее
+/// число ближе к правде.
+///
+/// Возвращает `None`, если отказов нет или расход вокруг них не записался.
+fn measure_budget(agg: &mut Agg) -> Option<(u64, u32)> {
+    if agg.refusals.is_empty() {
+        return None;
+    }
+
+    agg.spend.sort_by_key(|(moment, _)| *moment);
+    // префиксные суммы: расход за любой интервал — разность двух чисел
+    let mut prefix: Vec<u64> = Vec::with_capacity(agg.spend.len() + 1);
+    prefix.push(0);
+    for (_, tokens) in &agg.spend {
+        prefix.push(prefix.last().copied().unwrap_or(0) + tokens);
+    }
+
+    let mut best = 0;
+    let mut samples = 0;
+
+    for hit in agg.refusals.values() {
+        let start = match hit.checked_sub_signed(Span::hours(WINDOW_HOURS)) {
+            Some(start) => start,
+            None => continue,
+        };
+        // spend отсортирован, поэтому границы окна ищем делением пополам
+        let from = agg.spend.partition_point(|(moment, _)| *moment < start);
+        let till = agg.spend.partition_point(|(moment, _)| moment <= hit);
+        let used = prefix[till] - prefix[from];
+
+        samples += 1;
+        if used > best {
+            best = used;
+        }
+    }
+
+    if best == 0 {
+        return None;
+    }
+    Some((best, samples))
+}
+
+/// Действующий порог: ручная настройка важнее измерения, измерение — умолчания.
+fn pick_budget(manual: Option<u64>, measured: Option<(u64, u32)>) -> (u64, &'static str) {
+    // ноль в настройках означает «не задано», иначе полоса делилась бы на ноль
+    match (manual.filter(|value| *value > 0), measured) {
+        (Some(value), _) => (value, SOURCE_MANUAL),
+        (None, Some((value, _))) => (value, SOURCE_MEASURED),
+        (None, None) => (DEFAULT_BUDGET, SOURCE_DEFAULT),
+    }
+}
+
 #[tauri::command]
-pub fn get_claude_stats() -> Result<ClaudeStats, String> {
+pub fn get_claude_stats(app: tauri::AppHandle) -> Result<ClaudeStats, String> {
     let dir = projects_dir()?;
     let logs = collect_logs(&dir);
 
@@ -418,6 +533,11 @@ pub fn get_claude_stats() -> Result<ClaudeStats, String> {
     let by_day = week_series(&agg, &bounds);
     let week_tokens = by_day.iter().map(|day| day.tokens).sum();
 
+    let measured = measure_budget(&mut agg);
+    // настройки читаются без ошибки: нет файла — считаем, что порог не задан
+    let manual = crate::settings::load(&app).window_budget;
+    let (window_budget, budget_source) = pick_budget(manual, measured);
+
     Ok(ClaudeStats {
         window_tokens: agg.window,
         window_reset_at: window_reset(&agg, now),
@@ -431,5 +551,9 @@ pub fn get_claude_stats() -> Result<ClaudeStats, String> {
         by_model: ranked(&agg.by_model, None),
         last_limit_hit: agg.last_limit.map(|(moment, _)| to_iso(moment)),
         active_projects: active,
+        window_budget,
+        budget_source: budget_source.to_string(),
+        // сколько отказов удалось измерить — даже если порог сейчас взят из настроек
+        budget_samples: measured.map(|(_, samples)| samples).unwrap_or(0),
     })
 }
