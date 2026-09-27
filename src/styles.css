@@ -1,0 +1,138 @@
+:root {
+  /* фон и поверхности */
+  --bg: #16161d;
+  --card: rgba(255, 255, 255, 0.035);
+  --card-border: rgba(255, 255, 255, 0.07);
+  --track: rgba(255, 255, 255, 0.09);
+
+  /* текст */
+  --text: #ececf1;
+  --muted: #8e8e9e;
+
+  /* акценты */
+  --violet: #7d6bf7;
+  --violet-soft: rgba(125, 107, 247, 0.18);
+  --orange: #e67e4d;
+  --orange-soft: rgba(230, 126, 77, 0.18);
+  --green: #4fbe8b;
+  --amber: #e3b341;
+
+  --radius-card: 16px;
+  --radius-window: 20px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  /* окно прозрачное: фон рисует только сама панель */
+  background: transparent;
+  color: var(--text);
+  font-family: Manrope, "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+  /* виджет не должен вести себя как веб-страница */
+  user-select: none;
+  cursor: default;
+}
+
+.mono {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel {
+  height: 100%;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg);
+  border-radius: var(--radius-window);
+  border: 1px solid var(--card-border);
+}
+
+/* за эту область окно таскается мышью */
+.drag {
+  -webkit-app-region: drag;
+}
+
+.drag button,
+.drag a {
+  -webkit-app-region: no-drag;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px 2px;
+}
+
+.head-title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--green);
+}
+
+.grow {
+  flex-grow: 1;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.icon-btn {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.card {
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  padding: 13px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 0 4px;
+}

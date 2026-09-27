@@ -1,0 +1,21 @@
+# зависимости и сборка
+node_modules/
+dist/
+.cargo-target/
+src-tauri/target/
+
+# локальные настройки и секреты
+.env
+.env.*
+*.local
+.claude/settings.local.json
+
+# системное
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# редакторы
+.vscode/*
+!.vscode/extensions.json
+.idea/
