@@ -1,6 +1,9 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { PcCard } from "./cards/PcCard";
+import { useSystemStats } from "./hooks/useSystemStats";
 
 export default function App() {
+  const { stats, error, history } = useSystemStats();
   const hide = () => getCurrentWindow().hide();
 
   return (
@@ -17,9 +20,7 @@ export default function App() {
         </button>
       </header>
 
-      <section className="card">
-        <span className="muted">Карточка «Этот ПК» — следующий шаг</span>
-      </section>
+      <PcCard stats={stats} error={error} history={history} />
 
       <section className="card">
         <span className="muted">Карточка «Claude Code» — следующий шаг</span>

@@ -1,0 +1,137 @@
+/* Карточка «Claude Code». Акцент — оранжевый, внутренняя ширина ~344px. */
+
+.card-mark.claude-mark {
+  background: #3a2116;
+  color: #ee9765;
+}
+
+/* --- крупное число за сегодня --- */
+
+.claude-today {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.claude-today-value {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  line-height: 1;
+}
+
+.claude-today-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- график за 7 дней --- */
+
+.claude-week {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.claude-day {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+}
+
+.claude-day-track {
+  height: 46px;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 4px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.claude-day-fill {
+  width: 100%;
+  border-radius: 4px;
+  background: var(--orange);
+  transition: height 0.4s ease;
+}
+
+/* день без расхода: тонкая полоска вместо пустой колонки */
+.claude-day-zero {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.claude-day-name {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.claude-day-now {
+  color: var(--orange);
+}
+
+/* --- список проектов --- */
+
+.claude-projects {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.claude-proj {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.claude-proj-name {
+  flex: 0 0 96px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.claude-proj-track {
+  flex: 1 1 auto;
+  height: 5px;
+  min-width: 0;
+  border-radius: 3px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.claude-proj-fill {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--orange);
+  transition: width 0.4s ease;
+}
+
+.claude-proj-value {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: right;
+  min-width: 52px;
+}
+
+/* --- чипы моделей --- */
+
+.claude-chip {
+  background: var(--orange-soft);
+}

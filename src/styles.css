@@ -16,6 +16,7 @@
   --orange-soft: rgba(230, 126, 77, 0.18);
   --green: #4fbe8b;
   --amber: #e3b341;
+  --red: #e5705f;
 
   --radius-card: 16px;
   --radius-window: 20px;
@@ -135,4 +136,183 @@ body {
   font-size: 10px;
   font-weight: 600;
   padding: 0 4px;
+}
+
+/* --- шапка карточки --- */
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.card-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.card-mark.violet {
+  background: #241f4d;
+  color: #9d8ffa;
+}
+
+.card-title {
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.card-sub {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Модель процессора — единственное, что можно обрезать: остальное важнее */
+.card-sub-shrink {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-meta {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.strong {
+  color: var(--text);
+}
+
+.dot-warn {
+  background: var(--amber);
+}
+
+/* --- кольцо --- */
+
+.pc-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.pc-bars {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+}
+
+.ring {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ring-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.ring-value {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.ring-sign {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ring-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+}
+
+/* --- полосы --- */
+
+.bar {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.bar-head {
+  display: flex;
+  align-items: baseline;
+}
+
+.bar-label {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.bar-value {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.bar-total {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.bar-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 6px;
+  border-radius: 3px;
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+/* --- чипы процессов --- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 7px;
+  padding: 4px 7px;
+  max-width: 100%;
+}
+
+.chip-violet {
+  background: var(--violet-soft);
+}
+
+.chip-count {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.chip-value {
+  color: var(--muted);
 }
